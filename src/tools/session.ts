@@ -82,35 +82,48 @@ async function handleCreateSession(
 
       context.currentSessionId = targetSessionId;
 
-      // Only get debug URL for cloud mode
-      let debugUrl = "Local Chrome session (no remote debugger)";
-      if (!localMode && session.sessionId) {
+      process.stderr.write(
+        `[tool.connected] Successfully connected to browser session. Internal ID: ${targetSessionId}${localMode ? " (Local Mode)" : ", Browserbase ID: " + session.sessionId}`,
+      );
+
+      if (localMode) {
+        process.stderr.write(
+          `[SessionManager] Local Chrome session active - no remote URLs available`,
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Local Chrome browser session created successfully.\nSession ID: ${targetSessionId}\nMode: Local Chrome (localhost:9222)`,
+            },
+          ],
+        };
+      } else {
+        // Cloud mode - get debug URL and display Browserbase URLs
         const bb = new Browserbase({
           apiKey: config.browserbaseApiKey,
         });
-        debugUrl = (await bb.sessions.debug(session.sessionId))
+        const debugUrl = (await bb.sessions.debug(session.sessionId))
           .debuggerFullscreenUrl;
+
+        process.stderr.write(
+          `[SessionManager] Browserbase Live Session View URL: https://www.browserbase.com/sessions/${session.sessionId}`,
+        );
+
+        process.stderr.write(
+          `[SessionManager] Browserbase Live Debugger URL: ${debugUrl}`,
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Browserbase Live Session View URL: https://www.browserbase.com/sessions/${session.sessionId}\nBrowserbase Live Debugger URL: ${debugUrl}`,
+            },
+          ],
+        };
       }
-      process.stderr.write(
-        `[tool.connected] Successfully connected to Browserbase session. Internal ID: ${targetSessionId}, Actual ID: ${session.sessionId}`,
-      );
-
-      process.stderr.write(
-        `[SessionManager] Browserbase Live Session View URL: https://www.browserbase.com/sessions/${session.sessionId}`,
-      );
-
-      process.stderr.write(
-        `[SessionManager] Browserbase Live Debugger URL: ${debugUrl}`,
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Browserbase Live Session View URL: https://www.browserbase.com/sessions/${session.sessionId}\nBrowserbase Live Debugger URL: ${debugUrl}`,
-          },
-        ],
-      };
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

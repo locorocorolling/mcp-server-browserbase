@@ -121,26 +121,38 @@ export const createSessionTool = defineTool({
         throw new Error("No Browserbase session ID available");
       }
 
-      // Get the debug URL using Browserbase SDK (only for cloud mode)
-      let debugUrl = "Local Chrome session (no remote debugger)";
-      if (!localMode && bbSessionId) {
+      if (localMode) {
+        return {
+          action: async () => ({
+            content: [
+              {
+                type: "text",
+                text: `Created local Chrome session ${session.id}${name ? ` (${name})` : ""}\nMode: Local Chrome (localhost:9222)\nSession Type: Multi-session`,
+              },
+            ],
+          }),
+          waitForNetwork: false,
+        };
+      } else {
+        // Get the debug URL using Browserbase SDK (cloud mode only)
         const bb = new Browserbase({
           apiKey: context.config.browserbaseApiKey,
         });
-        debugUrl = (await bb.sessions.debug(bbSessionId)).debuggerFullscreenUrl;
-      }
+        const debugUrl = (await bb.sessions.debug(bbSessionId))
+          .debuggerFullscreenUrl;
 
-      return {
-        action: async () => ({
-          content: [
-            {
-              type: "text",
-              text: `Created session ${session.id}${name ? ` (${name})` : ""}\nBrowserbase session: ${bbSessionId}\nBrowserbase Live Session View URL: https://www.browserbase.com/sessions/${bbSessionId}\nBrowserbase Live Debugger URL: ${debugUrl}`,
-            },
-          ],
-        }),
-        waitForNetwork: false,
-      };
+        return {
+          action: async () => ({
+            content: [
+              {
+                type: "text",
+                text: `Created session ${session.id}${name ? ` (${name})` : ""}\nBrowserbase session: ${bbSessionId}\nBrowserbase Live Session View URL: https://www.browserbase.com/sessions/${bbSessionId}\nBrowserbase Live Debugger URL: ${debugUrl}`,
+              },
+            ],
+          }),
+          waitForNetwork: false,
+        };
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

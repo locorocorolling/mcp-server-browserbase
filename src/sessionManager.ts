@@ -3,6 +3,7 @@ import type { Config } from "../config.d.ts";
 import type { Cookie } from "playwright-core";
 import { createStagehandInstance } from "./stagehandStore.js";
 import type { BrowserSession } from "./types/types.js";
+import { isLocalMode } from "./utils/localMode.js";
 
 // Global state for managing browser sessions
 const browsers = new Map<string, BrowserSession>();
@@ -104,13 +105,20 @@ export async function createNewBrowserSession(
     }
 
     const browserbaseSessionId = stagehand.browserbaseSessionID;
+    const localMode = isLocalMode(config);
 
-    process.stderr.write(
-      `[SessionManager] Stagehand initialized with Browserbase session: ${browserbaseSessionId}\n`,
-    );
-    process.stderr.write(
-      `[SessionManager] Browserbase Live Debugger URL: https://www.browserbase.com/sessions/${browserbaseSessionId}\n`,
-    );
+    if (localMode) {
+      process.stderr.write(
+        `[SessionManager] Stagehand initialized in local Chrome mode\n`,
+      );
+    } else {
+      process.stderr.write(
+        `[SessionManager] Stagehand initialized with Browserbase session: ${browserbaseSessionId}\n`,
+      );
+      process.stderr.write(
+        `[SessionManager] Browserbase Live Debugger URL: https://www.browserbase.com/sessions/${browserbaseSessionId}\n`,
+      );
+    }
 
     // Set up disconnect handler
     browser.on("disconnected", () => {

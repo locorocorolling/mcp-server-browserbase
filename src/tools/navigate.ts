@@ -39,31 +39,43 @@ async function handleNavigate(
         throw new Error("No Browserbase session ID available");
       }
 
-      // Get the debug URL using Browserbase SDK (only for cloud mode)
-      let debugUrl = "Local Chrome session (no remote debugger)";
-      if (!localMode && sessionId) {
+      if (localMode) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully navigated to: ${params.url}\nMode: Local Chrome (localhost:9222)`,
+            },
+          ],
+        };
+      } else {
+        // Get the debug URL using Browserbase SDK (cloud mode only)
+        if (!sessionId) {
+          throw new Error("No Browserbase session ID available for cloud mode");
+        }
         const bb = new Browserbase({
           apiKey: context.config.browserbaseApiKey,
         });
-        debugUrl = (await bb.sessions.debug(sessionId)).debuggerFullscreenUrl;
-      }
+        const debugUrl = (await bb.sessions.debug(sessionId))
+          .debuggerFullscreenUrl;
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Navigated to: ${params.url}`,
-          },
-          {
-            type: "text",
-            text: `View the live session here: https://www.browserbase.com/sessions/${sessionId}`,
-          },
-          {
-            type: "text",
-            text: `Browserbase Live Debugger URL: ${debugUrl}`,
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Navigated to: ${params.url}`,
+            },
+            {
+              type: "text",
+              text: `View the live session here: https://www.browserbase.com/sessions/${sessionId}`,
+            },
+            {
+              type: "text",
+              text: `Browserbase Live Debugger URL: ${debugUrl}`,
+            },
+          ],
+        };
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to navigate: ${errorMsg}`);
