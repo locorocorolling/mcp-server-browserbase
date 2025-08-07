@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { Stagehand, Page } from "@browserbasehq/stagehand";
 import { StagehandSession, CreateSessionParams } from "./types/types.js";
 import type { Config } from "../config.d.ts";
+import { isLocalMode } from "./utils/localMode.js";
 
 // Store for all active sessions
 const store = new Map<string, StagehandSession>();
@@ -14,17 +15,29 @@ export const createStagehandInstance = async (
   params: CreateSessionParams = {},
   sessionId: string,
 ): Promise<Stagehand> => {
+  const localMode = isLocalMode(config);
+
   const apiKey = params.apiKey || config.browserbaseApiKey;
   const projectId = params.projectId || config.browserbaseProjectId;
 
-  if (!apiKey || !projectId) {
-    throw new Error("Browserbase API Key and Project ID are required");
+  if (!localMode && (!apiKey || !projectId)) {
+    throw new Error(
+      "Browserbase API Key and Project ID are required for cloud mode",
+    );
   }
 
   const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    apiKey,
-    projectId,
+    env: localMode ? "LOCAL" : "BROWSERBASE",
+    ...(localMode ? {} : { apiKey, projectId }),
+    ...(localMode && {
+      localBrowserLaunchOptions: {
+        cdpUrl: config.cdpUrl || "http://localhost:9222",
+        viewport: {
+          width: config.viewPort?.browserWidth ?? 1024,
+          height: config.viewPort?.browserHeight ?? 768,
+        },
+      },
+    }),
     modelName:
       params.modelName || config.modelName || "google/gemini-2.0-flash",
     modelClientOptions: {
@@ -33,26 +46,30 @@ export const createStagehandInstance = async (
     ...(params.browserbaseSessionID && {
       browserbaseSessionID: params.browserbaseSessionID,
     }),
-    browserbaseSessionCreateParams: {
-      projectId,
-      proxies: config.proxies,
-      browserSettings: {
-        viewport: {
-          width: config.viewPort?.browserWidth ?? 1024,
-          height: config.viewPort?.browserHeight ?? 768,
-        },
-        context: config.context?.contextId
-          ? {
-              id: config.context?.contextId,
-              persist: config.context?.persist ?? true,
-            }
-          : undefined,
-        advancedStealth: config.advancedStealth ?? undefined,
-      },
-      userMetadata: {
-        mcp: "true",
-      },
-    },
+    ...(localMode
+      ? {}
+      : {
+          browserbaseSessionCreateParams: {
+            projectId: projectId!,
+            proxies: config.proxies,
+            browserSettings: {
+              viewport: {
+                width: config.viewPort?.browserWidth ?? 1024,
+                height: config.viewPort?.browserHeight ?? 768,
+              },
+              context: config.context?.contextId
+                ? {
+                    id: config.context?.contextId,
+                    persist: config.context?.persist ?? true,
+                  }
+                : undefined,
+              advancedStealth: config.advancedStealth ?? undefined,
+            },
+            userMetadata: {
+              mcp: "true",
+            },
+          },
+        }),
     logger: (logLine) => {
       console.error(`Stagehand[${sessionId}]: ${logLine.message}`);
     },

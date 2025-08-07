@@ -148,7 +148,7 @@ export async function createNewBrowserSession(
     const sessionObj: BrowserSession = {
       browser,
       page,
-      sessionId: browserbaseSessionId!,
+      sessionId: browserbaseSessionId || newSessionId, // Use local session ID as fallback
       stagehand,
     };
 

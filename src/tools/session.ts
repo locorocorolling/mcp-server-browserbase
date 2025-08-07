@@ -3,6 +3,7 @@ import type { Tool, ToolSchema, ToolResult } from "./tool.js";
 import type { Context } from "../context.js";
 import type { ToolActionResult } from "../types/types.js";
 import { Browserbase } from "@browserbasehq/sdk";
+import { isLocalMode } from "../utils/localMode.js";
 
 // Import SessionManager functions
 import {
@@ -65,11 +66,13 @@ async function handleCreateSession(
         );
       }
 
+      const localMode = isLocalMode(config);
+
       if (
         !session ||
         !session.browser ||
         !session.page ||
-        !session.sessionId ||
+        (!localMode && !session.sessionId) || // Only require sessionId in cloud mode
         !session.stagehand
       ) {
         throw new Error(
@@ -78,11 +81,16 @@ async function handleCreateSession(
       }
 
       context.currentSessionId = targetSessionId;
-      const bb = new Browserbase({
-        apiKey: config.browserbaseApiKey,
-      });
-      const debugUrl = (await bb.sessions.debug(session.sessionId))
-        .debuggerFullscreenUrl;
+
+      // Only get debug URL for cloud mode
+      let debugUrl = "Local Chrome session (no remote debugger)";
+      if (!localMode && session.sessionId) {
+        const bb = new Browserbase({
+          apiKey: config.browserbaseApiKey,
+        });
+        debugUrl = (await bb.sessions.debug(session.sessionId))
+          .debuggerFullscreenUrl;
+      }
       process.stderr.write(
         `[tool.connected] Successfully connected to Browserbase session. Internal ID: ${targetSessionId}, Actual ID: ${session.sessionId}`,
       );

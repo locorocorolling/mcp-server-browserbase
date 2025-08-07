@@ -9,6 +9,7 @@ import {
 import * as stagehandStore from "../stagehandStore.js";
 import { CreateSessionParams } from "../types/types.js";
 import type { Context } from "../context.js";
+import { isLocalMode } from "../utils/localMode.js";
 import navigateTool from "./navigate.js";
 import actTool from "./act.js";
 import extractTool from "./extract.js";
@@ -113,17 +114,21 @@ export const createSessionTool = defineTool({
 
       const session = await stagehandStore.create(context.config, params);
 
+      const localMode = isLocalMode(context.config);
+
       const bbSessionId = session.metadata?.bbSessionId;
-      if (!bbSessionId) {
+      if (!bbSessionId && !localMode) {
         throw new Error("No Browserbase session ID available");
       }
 
-      // Get the debug URL using Browserbase SDK
-      const bb = new Browserbase({
-        apiKey: context.config.browserbaseApiKey,
-      });
-      const debugUrl = (await bb.sessions.debug(bbSessionId))
-        .debuggerFullscreenUrl;
+      // Get the debug URL using Browserbase SDK (only for cloud mode)
+      let debugUrl = "Local Chrome session (no remote debugger)";
+      if (!localMode && bbSessionId) {
+        const bb = new Browserbase({
+          apiKey: context.config.browserbaseApiKey,
+        });
+        debugUrl = (await bb.sessions.debug(bbSessionId)).debuggerFullscreenUrl;
+      }
 
       return {
         action: async () => ({

@@ -3,6 +3,20 @@ import type { AvailableModelSchema } from "./src/types/models.js";
 
 export type Config = {
   /**
+   * Enable local browser mode instead of Browserbase cloud
+   * When true, uses local CDP connection instead of Browserbase
+   *
+   * @default false
+   */
+  localMode?: boolean;
+  /**
+   * CDP URL for local browser connection
+   * Only used when localMode is true
+   *
+   * @default "http://localhost:9222"
+   */
+  cdpUrl?: string;
+  /**
    * Browserbase API Key to authenticate requests
    */
   browserbaseApiKey: string;
